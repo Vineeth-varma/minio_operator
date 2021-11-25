@@ -114,7 +114,10 @@ tenants:
         ## Configure resource requests and limits for MinIO containers
         resources: { }
         ## Configure security context
-        securityContext: { }
+        securityContext: 
+          runAsUser: 1000
+          runAsGroup: 1000
+
         ## Configure topology constraints
         topologySpreadConstraints: [ ]
     ## Mount path where PV will be mounted inside container(s).

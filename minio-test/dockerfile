@@ -1,0 +1,70 @@
+FROM ubuntu:18.04
+
+
+RUN apt-get update && apt-get install -y \
+    vim \
+    wget \
+    openssh-server \
+    sudo \
+    cron \
+    curl \
+    iputils-ping \
+    net-tools \
+    apt-utils \
+    gcc \
+    locales \
+    build-essential \
+    software-properties-common \ 
+    python3 \
+    python3-pip \
+    git 
+
+
+# ssh without key
+RUN ssh-keygen -t rsa -f ~/.ssh/id_rsa -P '' && \
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+RUN chmod 755 ~/.ssh/authorized_keys
+
+# UTF locale
+RUN echo "pt_BR.UTF-8 UTF-8" >> /etc/locale.gen
+RUN locale-gen pt_BR.UTF-8
+ENV LANG=pt_BR.UTF-8
+
+# Creating a user with home directory
+RUN addgroup --gid 1000 minio
+RUN useradd -mu 1000 -g 1000 minio -s  /bin/bash
+
+RUN echo 'minio ALL=(ALL) NOPASSWD: /usr/sbin/useradd, /usr/sbin/groupadd, /bin/sed, /bin/echo, /usr/bin/sort, /bin/cat, /usr/bin/tee,  /usr/bin/bash, /bin/mkdir, /bin/cp, /bin/chown, /bin/chmod, /bin/bash, /usr/sbin/service, /usr/sbin/cron, /usr/bin/crontab, /usr/sbin/postfix' >> /etc/sudoers
+
+
+WORKDIR /home/minio
+
+# mc client setup
+RUN wget https://dl.min.io/client/mc/release/linux-amd64/mc
+RUN chmod +x mc
+RUN cp mc /usr/bin/
+RUN chown -R minio:minio /usr/bin/mc
+
+# Minio audit logging setup
+WORKDIR /home/minio
+COPY requirements.txt ./
+COPY minio-audit ./flask-basic-auth
+RUN chown -R minio:minio  /home/minio/*
+
+EXPOSE 5000
+RUN mkdir -p /home/minio/data/
+
+# Installing flask
+RUN pip3 install flask
+RUN pip3 install -r requirements.txt
+
+RUN chmod 777 /opt
+COPY myaddition.sh /opt
+RUN chmod 777 /opt/myaddition.sh
+
+
+WORKDIR /home/minio/data
+USER minio
+
+
+ENTRYPOINT [ "/opt/myaddition.sh" ]
